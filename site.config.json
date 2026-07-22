@@ -1,0 +1,159 @@
+{
+  "profile": {
+    "name": "Vlad Manea",
+    "handle": "@vladmanea",
+    "location": "Germany",
+    "tagline": "Photographer turned digital product creator. I teach color, and I show what the work earns.",
+    "avatar": "/assets/avatar.svg",
+    "site_url": "https://links.vlad-manea.de",
+    "verified_since": "2023",
+    "footer_note": "Numbers on this page are pulled from Stripe. Nothing is typed in by hand unless it says so."
+  },
+  "meta": {
+    "title": "Vlad Manea \u2014 everything I build, and what it earns",
+    "description": "One page for every product, video and link I put out. Revenue pulled straight from Stripe.",
+    "og_image": "/assets/og.png"
+  },
+  "money": {
+    "base_currency": "usd",
+    "auto_rates": true,
+    "rates": {
+      "usd": 1,
+      "eur": 1.17,
+      "gbp": 1.34,
+      "cad": 0.73,
+      "aud": 0.66,
+      "chf": 1.24
+    },
+    "window_months": 12,
+    "history_months": 48,
+    "show_total_bar": true,
+    "total_label": "verified through Stripe"
+  },
+  "newsletter": {
+    "enabled": true,
+    "heading": "The color list",
+    "blurb": "One email when I release something. Grading breakdowns, no filler.",
+    "button": "Join",
+    "success": "You are on the list.",
+    "subscriber_count_manual": null
+  },
+  "socials": [
+    {
+      "label": "Instagram",
+      "url": "https://instagram.com/",
+      "icon": "instagram"
+    },
+    {
+      "label": "YouTube",
+      "url": "https://youtube.com/",
+      "icon": "youtube"
+    },
+    {
+      "label": "Website",
+      "url": "https://vlad-manea.de",
+      "icon": "globe"
+    },
+    {
+      "label": "Email",
+      "url": "mailto:hello@vlad-manea.de",
+      "icon": "mail"
+    }
+  ],
+  "products": [
+    {
+      "id": "color-manual",
+      "name": "The Color Grading Manual",
+      "blurb": "The full system I use to grade photos. 1,000+ people bought it.",
+      "url": "https://example.thrivecart.com/color-grading-manual/",
+      "cta": "Get it",
+      "badge": "4.9 stars",
+      "revenue_display": "total",
+      "match": {
+        "description_contains": [
+          "color grading manual",
+          "color manual"
+        ],
+        "stripe_product": [],
+        "stripe_price": [],
+        "metadata": {}
+      }
+    },
+    {
+      "id": "high-freedom-os",
+      "name": "High Freedom OS",
+      "blurb": "The community where employed creatives build their first high ticket offer.",
+      "url": "https://example.thrivecart.com/high-freedom-os/",
+      "cta": "Apply",
+      "revenue_display": "total",
+      "match": {
+        "description_contains": [
+          "high freedom"
+        ],
+        "stripe_product": [],
+        "stripe_price": [],
+        "metadata": {}
+      }
+    },
+    {
+      "id": "gameplan",
+      "name": "Digital Product Gameplan",
+      "blurb": "Nine dollars. You leave with one product decided and a plan to launch it.",
+      "url": "https://example.thrivecart.com/digital-product-gameplan/",
+      "cta": "$9",
+      "revenue_display": "total",
+      "match": {
+        "description_contains": [
+          "gameplan",
+          "game plan"
+        ],
+        "stripe_product": [],
+        "stripe_price": [],
+        "metadata": {}
+      }
+    },
+    {
+      "id": "presets",
+      "name": "Cinematic Preset Pack",
+      "blurb": "The presets I actually use, with the reasoning behind each one.",
+      "url": "https://example.thrivecart.com/cinematic-presets/",
+      "cta": "Get it",
+      "revenue_display": "monthly",
+      "match": {
+        "description_contains": [
+          "preset"
+        ],
+        "stripe_product": [],
+        "stripe_price": [],
+        "metadata": {}
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "yt-channel",
+      "title": "My YouTube channel",
+      "subtitle": "Color, gear, and the business behind it",
+      "url": "https://youtube.com/",
+      "kind": "youtube"
+    },
+    {
+      "id": "yt-video",
+      "title": "How I grade a photo in 6 minutes",
+      "subtitle": "Free on YouTube",
+      "url": "https://youtube.com/watch?v=",
+      "kind": "video"
+    },
+    {
+      "id": "skool",
+      "title": "The $9 community",
+      "subtitle": "Lower tier, weekly check-ins",
+      "url": "https://skool.com/",
+      "kind": "link"
+    }
+  ],
+  "unmatched": {
+    "show": false,
+    "label": "Everything else"
+  }
+}

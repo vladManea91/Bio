@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<link rel="canonical" href="{{SITE_URL}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{TITLE}}">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<meta property="og:url" content="{{SITE_URL}}">
+<meta property="og:image" content="{{OG_IMAGE}}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{TITLE}}">
+<meta name="twitter:description" content="{{DESCRIPTION}}">
+<meta name="twitter:image" content="{{OG_IMAGE}}">
+<meta name="theme-color" content="#0e241c">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+<script type="application/ld+json">{{JSONLD}}</script>
+</head>
+<body>
+<main class="shell">
+
+  <header class="head">
+    <img class="head__avatar" src="{{AVATAR}}" alt="{{NAME}}" width="92" height="92">
+    <h1 class="head__name">{{NAME}}</h1>
+    <div class="head__meta eyebrow">{{META}}</div>
+    <p class="head__tagline">{{TAGLINE}}</p>
+    <div id="paid-banner" hidden class="banner"></div>
+  </header>
+
+  <section class="tape" id="tape" aria-label="Revenue verified through Stripe" hidden>
+    <div class="tape__head" data-print style="animation-delay:0ms">
+      <span>{{NAME_SHORT}} · receipts</span>
+      <span data-tape-date></span>
+    </div>
+    <hr class="tape__rule">
+    <div data-tape-rows></div>
+    <hr class="tape__rule tape__rule--double">
+    <div class="tape__total" data-print style="animation-delay:420ms">
+      <span>Total {{TOTAL_LABEL}}</span>
+      <b data-tape-total>—</b>
+    </div>
+    <div class="tape__foot" data-print style="animation-delay:520ms">
+      <span class="dot"></span>
+      <span data-tape-foot>Reading Stripe…</span>
+    </div>
+  </section>
+
+  <nav class="socials" aria-label="Social links">
+    {{SOCIALS}}
+  </nav>
+
+  <section class="section" aria-labelledby="products-title">
+    <div class="section__head">
+      <h2 class="section__title" id="products-title">What I sell</h2>
+      <span class="eyebrow" data-window-label></span>
+    </div>
+    <div class="cards">
+      {{PRODUCTS}}
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="links-title">
+    <div class="section__head">
+      <h2 class="section__title" id="links-title">Where else to find me</h2>
+    </div>
+    <div class="links">
+      {{LINKS}}
+    </div>
+  </section>
+
+  {{SIGNUP}}
+
+  <footer class="foot">
+    <p>{{FOOTER_NOTE}}</p>
+  </footer>
+
+</main>
+
+<script>window.SITE = {{CONFIG_JSON}};</script>
+<script src="/assets/app.js" defer></script>
+</body>
+</html>

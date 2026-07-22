@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/assets/styles.css">
+<style>
+  body { padding-bottom: 60px; }
+  .shell { max-width: 760px; }
+  .panel {
+    border: 1px solid var(--forest-3);
+    border-radius: var(--radius);
+    background: var(--forest-2);
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  h1 { font-family: var(--display); font-weight: 600; font-size: 28px; margin: 34px 0 6px; }
+  h2 { font-family: var(--display); font-weight: 600; font-size: 18px; margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  input[type=password], input[type=text] {
+    flex: 1; min-width: 200px; padding: 11px 14px; border-radius: 10px;
+    border: 1px solid var(--forest-3); background: var(--forest); color: var(--cream);
+    font-family: var(--mono); font-size: 14px;
+  }
+  button.act {
+    padding: 10px 16px; border: 1px solid var(--forest-3); border-radius: 10px;
+    background: var(--forest); color: var(--cream); font-family: var(--body);
+    font-weight: 500; font-size: 14px; cursor: pointer;
+  }
+  button.act:hover { border-color: var(--orange); }
+  button.act.primary { background: var(--orange); color: var(--forest); border-color: var(--orange); font-weight: 700; }
+  button.act:disabled { opacity: .5; cursor: wait; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--forest-3); }
+  th { color: var(--sage); font-weight: 500; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  pre {
+    background: var(--forest); border: 1px solid var(--forest-3); border-radius: 10px;
+    padding: 12px; overflow: auto; font-family: var(--mono); font-size: 12px;
+    color: var(--sage); max-height: 320px; margin: 0;
+  }
+  .hint { color: var(--sage); font-size: 13.5px; margin: 0 0 12px; }
+  .warn { color: #ff9d7a; }
+  .ok { color: var(--orange); }
+</style>
+</head>
+<body>
+<main class="shell">
+  <h1>Admin</h1>
+  <p class="hint">Everything here runs against your Stripe data. Nothing on this page is public.</p>
+
+  <section class="panel">
+    <h2>Admin token</h2>
+    <p class="hint">The value you set as ADMIN_TOKEN in Netlify. Kept in this tab only.</p>
+    <div class="row">
+      <input id="token" type="password" placeholder="admin token" autocomplete="off">
+      <button class="act" id="save-token">Save</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Payments</h2>
+    <p class="hint">Sync pulls new payments from every account you connected, Stripe and PayPal. Full resync rereads the whole history. Rebuild only redoes the product matching, with no network calls, which is what you want after editing match rules. Rates refresh runs on its own every day at 12:00 UTC.</p>
+    <div class="row">
+      <button class="act primary" id="sync">Sync now</button>
+      <button class="act" id="sync-full">Full resync</button>
+      <button class="act" id="rebuild">Rebuild matching</button>
+      <button class="act" id="rates">Refresh rates now</button>
+    </div>
+    <p class="hint" id="sync-note" style="margin-top:12px"></p>
+    <p class="hint" id="fx-note" style="margin-top:6px"></p>
+  </section>
+
+  <section class="panel">
+    <h2>What matched</h2>
+    <p class="hint">If money is sitting in “Everything else”, add a phrase from the Stripe charge description to that product's match rules in site.config.json.</p>
+    <table>
+      <thead><tr><th>Product</th><th class="num">Payments</th><th class="num">Monthly</th><th class="num">Total</th></tr></thead>
+      <tbody id="matched"><tr><td colspan="4">Load it with the button below.</td></tr></tbody>
+    </table>
+    <div class="row" style="margin-top:14px">
+      <button class="act" id="load-revenue">Load numbers</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Traffic and list</h2>
+    <div class="row">
+      <button class="act" id="load-stats">Load last 30 days</button>
+      <button class="act" id="download">Download subscribers CSV</button>
+    </div>
+    <div id="stats-out" style="margin-top:14px"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Raw response</h2>
+    <pre id="raw">Nothing yet.</pre>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const raw = $('#raw');
+  const note = $('#sync-note');
+  const KEY = 'receipts_admin_token';
+
+  const token = () => sessionStorage.getItem(KEY) || '';
+  $('#token').value = token();
+
+  $('#save-token').addEventListener('click', () => {
+    sessionStorage.setItem(KEY, $('#token').value.trim());
+    note.textContent = 'Token saved for this tab.';
+    note.className = 'hint ok';
+  });
+
+  const money = (n, currency) =>
+    new Intl.NumberFormat(undefined, { style: 'currency', currency: (currency || 'eur').toUpperCase(), maximumFractionDigits: 0 })
+      .format(Number(n) || 0);
+
+  async function call(url, opts = {}) {
+    if (!token()) throw new Error('Save your admin token first.');
+    const res = await fetch(url, {
+      ...opts,
+      headers: { 'x-admin-token': token(), ...(opts.headers || {}) }
+    });
+    const body = await res.json().catch(() => ({}));
+    raw.textContent = JSON.stringify(body, null, 2);
+    if (!res.ok) throw new Error(body.error || `Request failed with ${res.status}`);
+    return body;
+  }
+
+  function busy(btn, on, label) {
+    btn.disabled = on;
+    if (on) { btn.dataset.label = btn.textContent; btn.textContent = label || 'Working…'; }
+    else btn.textContent = btn.dataset.label || btn.textContent;
+  }
+
+  async function runSync(btn, query) {
+    busy(btn, true);
+    note.className = 'hint';
+    note.textContent = 'Talking to Stripe…';
+    try {
+      const body = await call(`/api/sync${query}`, { method: 'POST' });
+      note.className = body.complete === false ? 'hint warn' : 'hint ok';
+      note.textContent = body.note || (body.mode === 'rebuild' ? 'Matching rebuilt.' : 'Done.');
+      if (body.snapshot) paintMatched(body.snapshot);
+      if (body.fx) {
+        $('#fx-note').textContent = `1 unit of each currency in base ${body.fx.base.toUpperCase()}: ` +
+          Object.entries(body.fx.rates).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(', ') +
+          ` · dated ${body.fx.date} · from ${body.fx.source}`;
+      }
+    } catch (err) {
+      note.className = 'hint warn';
+      note.textContent = err.message;
+    } finally {
+      busy(btn, false);
+    }
+  }
+
+  $('#sync').addEventListener('click', (e) => runSync(e.target, '?budget=20000'));
+  $('#sync-full').addEventListener('click', (e) => runSync(e.target, '?full=1&budget=20000'));
+  $('#rebuild').addEventListener('click', (e) => runSync(e.target, '?rebuild=1'));
+  $('#rates').addEventListener('click', (e) => runSync(e.target, '?rates=1'));
+
+  function paintMatched(data) {
+    if (data.fx) {
+      $('#fx-note').textContent = `Base ${String(data.fx.base).toUpperCase()} · rates dated ${data.fx.date || 'from site.config.json'} · ` +
+        Object.entries(data.fx.rates || {}).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(', ');
+    }
+    const rows = [];
+    for (const [id, p] of Object.entries(data.products || {})) {
+      rows.push({ name: id, ...p });
+    }
+    if (data.other) rows.push({ name: 'Everything else', ...data.other });
+    $('#matched').innerHTML = rows
+      .map((r) => `<tr><td>${r.name}</td><td class="num">${r.orders || 0}</td><td class="num">${money(r.mrr, data.currency)}</td><td class="num">${money(r.total, data.currency)}</td></tr>`)
+      .join('') || '<tr><td colspan="4">No products configured.</td></tr>';
+  }
+
+  $('#load-revenue').addEventListener('click', async (e) => {
+    busy(e.target, true, 'Loading…');
+    try {
+      const res = await fetch('/api/revenue');
+      const data = await res.json();
+      raw.textContent = JSON.stringify(data, null, 2);
+      paintMatched(data);
+    } finally {
+      busy(e.target, false);
+    }
+  });
+
+  $('#load-stats').addEventListener('click', async (e) => {
+    busy(e.target, true, 'Loading…');
+    try {
+      const data = await call('/api/stats');
+      const clicks = Object.entries(data.totals.clicks || {}).sort((a, b) => b[1] - a[1]).slice(0, 12);
+      const sources = Object.entries(data.totals.sources || {}).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      $('#stats-out').innerHTML = `
+        <table>
+          <thead><tr><th>Last 30 days</th><th class="num">Count</th></tr></thead>
+          <tbody>
+            <tr><td>Page views</td><td class="num">${data.totals.views}</td></tr>
+            <tr><td>Subscribers</td><td class="num">${data.subscribers}</td></tr>
+            ${clicks.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}
+            ${sources.map(([k, v]) => `<tr><td>from ${k}</td><td class="num">${v}</td></tr>`).join('')}
+          </tbody>
+        </table>`;
+    } catch (err) {
+      $('#stats-out').innerHTML = `<p class="hint warn">${err.message}</p>`;
+    } finally {
+      busy(e.target, false);
+    }
+  });
+
+  $('#download').addEventListener('click', () => {
+    if (!token()) { note.className = 'hint warn'; note.textContent = 'Save your admin token first.'; return; }
+    location.href = `/api/subscribers?token=${encodeURIComponent(token())}`;
+  });
+})();
+</script>
+</body>
+</html>

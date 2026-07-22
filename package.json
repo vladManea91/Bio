@@ -1,0 +1,24 @@
+{
+  "name": "receipts-links",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Link in bio page with revenue verified straight from Stripe.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "netlify dev",
+    "demo": "npm run build && node scripts/preview.mjs --demo",
+    "preview": "npm run build && node scripts/preview.mjs",
+    "check": "npm run build && node scripts/check-page.mjs",
+    "test": "node --test tests/aggregate.test.mjs tests/sync.test.mjs tests/fx-paypal.test.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "linkedom": "^0.18.5"
+  }
+}

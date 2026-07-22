@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="Avatar placeholder">
+  <defs>
+    <clipPath id="c"><circle cx="100" cy="100" r="100"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="200" height="200" fill="#14332a"/>
+    <circle cx="100" cy="82" r="34" fill="#1e493c"/>
+    <path d="M32 200c0-38 30-62 68-62s68 24 68 62z" fill="#1e493c"/>
+    <circle cx="158" cy="42" r="14" fill="#e9622b"/>
+  </g>
+</svg>
