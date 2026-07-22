@@ -281,3 +281,32 @@ test('paypal failing does not stop stripe from syncing', async () => {
   assert.ok(result.accounts.find((a) => a.account.startsWith('paypal')).error, 'the paypal problem is reported');
   assert.equal(result.snapshot.products['color-manual'].total, 49, 'stripe revenue still landed');
 });
+
+test('the real sync never asks paypal for the last 3 hours', async () => {
+  const { runSync } = await import('../lib/sync.mjs');
+  const now = Date.now();
+  let capturedEnd = null;
+
+  const fetchImpl = async (rawUrl) => {
+    const url = new URL(String(rawUrl));
+    if (url.pathname.includes('oauth2/token')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.pathname.includes('/v1/reporting/transactions')) {
+      const end = url.searchParams.get('end_date');
+      if (!capturedEnd || end > capturedEnd) capturedEnd = end;
+      return { ok: true, status: 200, json: async () => ({ transaction_details: [], total_pages: 1 }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ data: [], has_more: false }) };
+  };
+
+  await runSync({
+    env: { PAYPAL_CLIENT_ID: 'id', PAYPAL_CLIENT_SECRET: 'sec' },
+    fetchImpl,
+    storeName: `test_buffer_${Date.now()}`,
+    now,
+    full: true
+  });
+
+  assert.ok(capturedEnd, 'at least one request was made');
+  const latestAllowed = new Date(now - 3 * 3600 * 1000 + 60000); // small slack for chunk boundaries
+  assert.ok(new Date(capturedEnd) <= latestAllowed, `end_date ${capturedEnd} should stay at least 3 hours behind now`);
+});

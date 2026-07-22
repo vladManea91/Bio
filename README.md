@@ -372,9 +372,34 @@ Rebuild matching.
 override the file. Press Reset to the file in the repo, or make the change in
 the panel instead.
 
-**PayPal says permission denied.** Transaction Search is not enabled on that
-REST app yet, or it was enabled recently and has not propagated. Check the tick
-box, then try again in a few hours.
+**PayPal payments are not showing up.** Open `/admin.html` and press
+**Test PayPal connection**. It checks authentication and transaction search
+separately from your Stripe sync, with no Stripe involved, and tells you which
+of these it is:
+
+- **No PayPal credentials found** — `PAYPAL_CLIENT_ID` and
+  `PAYPAL_CLIENT_SECRET` are not set in Netlify, or the site has not redeployed
+  since you added them. Environment variables only take effect on the next
+  deploy.
+- **Authentication failed** — the Client ID or Secret is wrong, or they are
+  **Sandbox** credentials while `PAYPAL_ENV` is set to `live` (or the other way
+  round). Sandbox and Live are separate apps with separate keys in the PayPal
+  dashboard, and mixing them up looks exactly like a wrong password.
+- **Transaction search failed with a 403** — Transaction Search is not ticked
+  on for that app yet, or was ticked on recently and has not propagated.
+  Recheck the box under that app's Features, and note it can take a few hours
+  to take effect after you tick it.
+- **Authenticated, but 0 transactions found** — the connection itself is fine.
+  Either there is genuinely nothing to find in the last 7 days, or a very
+  recent sale has not become searchable yet. PayPal can take up to 3 hours to
+  make a transaction searchable, which is also why the sync deliberately never
+  asks for the last 3 hours of activity, to avoid PayPal rejecting a request
+  for a window it cannot answer yet.
+
+If the test passes but a Full resync still shows nothing for PayPal, the sync
+panel now lists each account's result under **Accounts** after every run,
+including the exact error for that account, rather than only a generic "done"
+message.
 
 **A rate looks stale.** The daily job runs at 12:00 UTC. Press Refresh rates now
 in the admin panel to pull them immediately.

@@ -70,9 +70,12 @@
       <button class="act" id="sync-full">Full resync</button>
       <button class="act" id="rebuild">Rebuild matching</button>
       <button class="act" id="rates">Refresh rates</button>
+      <button class="act" id="paypal-check">Test PayPal connection</button>
     </div>
     <p class="hint" id="sync-note" style="margin-top:12px"></p>
     <p class="hint" id="fx-note" style="margin-top:4px"></p>
+    <div id="accounts-out" style="margin-top:10px"></div>
+    <div id="paypal-out" style="margin-top:10px"></div>
   </section>
 
   <section class="panel">
@@ -188,6 +191,22 @@ $('#save-token').addEventListener('click', async () => {
 
 /* ---------- payments ---------- */
 
+function paintAccounts(accounts) {
+  const out = $('#accounts-out');
+  if (!accounts || !accounts.length) { out.innerHTML = ''; return; }
+  out.innerHTML = `<table>
+      <thead><tr><th>Account</th><th>Fetched</th><th>Status</th></tr></thead>
+      <tbody>
+        ${accounts.map((a) => {
+          const fetched = Object.entries(a.fetched || {}).map(([k, v]) => `${v} ${k}`).join(', ') || '—';
+          const status = a.error
+            ? `<span class="warn">${esc(a.error)}</span>`
+            : a.complete === false ? '<span class="warn">stopped, run sync again</span>' : '<span class="ok">ok</span>';
+          return `<tr><td>${esc(a.account)}</td><td>${esc(fetched)}</td><td>${status}</td></tr>`;
+        }).join('')}
+      </tbody></table>`;
+}
+
 async function runSync(btn, query) {
   busy(btn, true);
   note.className = 'hint';
@@ -198,6 +217,7 @@ async function runSync(btn, query) {
     note.textContent = body.note || 'Done.';
     if (body.snapshot) paintMatched(body.snapshot);
     if (body.fx) $('#fx-note').textContent = `Rates dated ${body.fx.date} from ${body.fx.source}.`;
+    paintAccounts(body.accounts);
   } catch (err) {
     note.className = 'hint warn';
     note.textContent = err.message;
@@ -210,6 +230,35 @@ $('#sync').addEventListener('click', (e) => runSync(e.target, '?budget=20000'));
 $('#sync-full').addEventListener('click', (e) => runSync(e.target, '?full=1&budget=20000'));
 $('#rebuild').addEventListener('click', (e) => runSync(e.target, '?rebuild=1'));
 $('#rates').addEventListener('click', (e) => runSync(e.target, '?rates=1'));
+
+$('#paypal-check').addEventListener('click', async (e) => {
+  busy(e.target, true, 'Checking...');
+  const out = $('#paypal-out');
+  out.innerHTML = '<p class="hint">Talking to PayPal...</p>';
+  try {
+    const body = await call('/api/paypal-check');
+    if (body.step === 'configuration') {
+      out.innerHTML = `<p class="hint warn">${esc(body.error)}</p>`;
+      return;
+    }
+    out.innerHTML = `<p class="hint">PAYPAL_ENV is set to <b>${esc(body.env)}</b>.</p>` + body.results.map((r) => `
+      <div class="item">
+        <div class="item__bar"><strong>${esc(r.account)}</strong>
+          <span class="${r.auth === 'ok' && r.search === 'ok' ? 'ok' : 'warn'}">
+            ${r.auth === 'ok' ? 'authenticated' : 'authentication failed'}${r.search ? `, search ${r.search}` : ''}
+          </span>
+        </div>
+        ${r.error ? `<p class="hint warn">${esc(r.error)}</p>` : ''}
+        ${r.note ? `<p class="hint warn">${esc(r.note)}</p>` : ''}
+        ${r.search === 'ok' ? `<p class="hint">${r.transactions_last_7_days} transaction(s) found in the last 7 days.</p>` : ''}
+        ${(r.sample || []).length ? `<pre style="margin-top:6px">${esc(JSON.stringify(r.sample, null, 2))}</pre>` : ''}
+      </div>`).join('');
+  } catch (err) {
+    out.innerHTML = `<p class="hint warn">${esc(err.message)}</p>`;
+  } finally {
+    busy(e.target, false);
+  }
+});
 
 function paintMatched(data) {
   const rows = Object.entries(data.products || {}).map(([id, p]) => ({ name: id, ...p }));
