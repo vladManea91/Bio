@@ -28,7 +28,7 @@
     "window_months": 12,
     "history_months": 48,
     "show_total_bar": true,
-    "total_label": "verified through Stripe"
+    "total_label": "verified from payments"
   },
   "newsletter": {
     "enabled": true,
@@ -155,5 +155,16 @@
   "unmatched": {
     "show": false,
     "label": "Everything else"
+  },
+  "sections": {
+    "products_title": "My products",
+    "links_title": "Where else to find me"
+  },
+  "featured_video": {
+    "enabled": true,
+    "heading": "Start here",
+    "title": "How I grade a photo in 6 minutes",
+    "url": "https://www.youtube.com/watch?v=",
+    "youtube_id": ""
   }
 }

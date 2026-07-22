@@ -1,11 +1,11 @@
 import { json } from '../../lib/http.mjs';
 import { readSnapshot } from '../../lib/sync.mjs';
-import { loadConfig, normalise } from '../../lib/config.mjs';
+import { loadLiveConfig } from '../../lib/config.mjs';
 import { monthWindow } from '../../lib/aggregate.mjs';
 
 /** Public read. Never calls Stripe, only reads the snapshot the sync wrote. */
 export default async () => {
-  const site = normalise(await loadConfig());
+  const site = await loadLiveConfig();
   const snapshot = await readSnapshot();
 
   if (!snapshot) {

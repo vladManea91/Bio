@@ -26,15 +26,12 @@
 <body>
 <main class="shell">
 
-  <header class="head">
-    <img class="head__avatar" src="{{AVATAR}}" alt="{{NAME}}" width="92" height="92">
-    <h1 class="head__name">{{NAME}}</h1>
-    <div class="head__meta eyebrow">{{META}}</div>
-    <p class="head__tagline">{{TAGLINE}}</p>
-    <div id="paid-banner" hidden class="banner"></div>
+  <header class="head" id="region-head">
+    {{HEADER}}
   </header>
+  <div id="paid-banner" hidden class="banner"></div>
 
-  <section class="tape" id="tape" aria-label="Revenue verified through Stripe" hidden>
+  <section class="tape" id="tape" aria-label="Revenue verified from payments" hidden>
     <div class="tape__head" data-print style="animation-delay:0ms">
       <span>{{NAME_SHORT}} · receipts</span>
       <span data-tape-date></span>
@@ -48,42 +45,40 @@
     </div>
     <div class="tape__foot" data-print style="animation-delay:520ms">
       <span class="dot"></span>
-      <span data-tape-foot>Reading Stripe…</span>
+      <span data-tape-foot>Reading payments…</span>
     </div>
   </section>
 
-  <nav class="socials" aria-label="Social links">
-    {{SOCIALS}}
-  </nav>
+  <nav class="socials" id="region-socials" aria-label="Social links">{{SOCIALS}}</nav>
+
+  <section class="section" id="region-video">{{VIDEO}}</section>
 
   <section class="section" aria-labelledby="products-title">
     <div class="section__head">
-      <h2 class="section__title" id="products-title">What I sell</h2>
+      <h2 class="section__title" id="products-title">{{PRODUCTS_TITLE}}</h2>
       <span class="eyebrow" data-window-label></span>
     </div>
-    <div class="cards">
-      {{PRODUCTS}}
-    </div>
+    <div class="cards" id="region-products">{{PRODUCTS}}</div>
   </section>
 
   <section class="section" aria-labelledby="links-title">
     <div class="section__head">
-      <h2 class="section__title" id="links-title">Where else to find me</h2>
+      <h2 class="section__title" id="links-title">{{LINKS_TITLE}}</h2>
     </div>
-    <div class="links">
-      {{LINKS}}
-    </div>
+    <div class="links" id="region-links">{{LINKS}}</div>
   </section>
 
-  {{SIGNUP}}
+  <section class="section" id="region-signup">{{SIGNUP}}</section>
 
   <footer class="foot">
-    <p>{{FOOTER_NOTE}}</p>
+    <p id="region-footnote">{{FOOTER_NOTE}}</p>
   </footer>
+
+  <div id="debug" class="debug" hidden></div>
 
 </main>
 
 <script>window.SITE = {{CONFIG_JSON}};</script>
-<script src="/assets/app.js" defer></script>
+<script type="module" src="/assets/app.js"></script>
 </body>
 </html>

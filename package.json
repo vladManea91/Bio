@@ -10,7 +10,7 @@
     "demo": "npm run build && node scripts/preview.mjs --demo",
     "preview": "npm run build && node scripts/preview.mjs",
     "check": "npm run build && node scripts/check-page.mjs",
-    "test": "node --test tests/aggregate.test.mjs tests/sync.test.mjs tests/fx-paypal.test.mjs"
+    "test": "node --test tests/aggregate.test.mjs tests/sync.test.mjs tests/fx-paypal.test.mjs tests/config.test.mjs tests/unmatched.test.mjs"
   },
   "dependencies": {
     "@netlify/blobs": "^8.1.0"
@@ -19,6 +19,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "linkedom": "^0.18.5"
   }
 }

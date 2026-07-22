@@ -148,10 +148,79 @@ Second PayPal account goes in `PAYPAL_CLIENT_ID_2` and `PAYPAL_CLIENT_SECRET_2`.
 
 ---
 
-## Edit your page
+## Nothing is showing on the page
 
-Everything lives in `site.config.json`. Change it, commit, push. Netlify
-rebuilds and the page updates.
+The page hides money on purpose until there is money to show, which looks
+identical to being broken. To find out which one you are looking at, add
+`?debug=1` to the URL:
+
+```
+https://yoursite.netlify.app/?debug=1
+```
+
+A panel appears at the bottom, visible only with that parameter, telling you
+whether the API answered, how many payments are stored, how many product cards
+got numbers, and how much money is sitting unassigned. It names the fix for
+each case.
+
+The three usual answers:
+
+- **payments api not reachable** — you are opening `public/index.html` as a file
+  instead of running the site. Use `npm run demo`, or deploy it.
+- **stored payments: none yet** — no sync has run. Open `/admin.html`, unlock
+  with your admin token, press Full resync.
+- **money sitting in Everything else** — your payments arrived, they just are
+  not assigned to products yet. That is the next section.
+
+---
+
+## Find my products
+
+This is the one that matters, and it is why your revenue lands in "Everything
+else" at the start. The phrases shipped in `site.config.json` are guesses. Your
+Stripe charges say whatever ThriveCart actually writes on them, which nobody
+can know in advance.
+
+So do not guess. In `/admin.html`, press **Load unmatched payments**. You get
+every payment that matched nothing, grouped by the exact text it arrived with,
+biggest amount first, with a count next to each. Pick the product each group
+belongs to from the dropdown, press **Assign**, and the phrase is written into
+that product's matching rules, saved, and the numbers recalculated on the spot.
+
+Work down the list until it says everything matched. It usually takes about a
+minute, and you never have to open the config file.
+
+---
+
+## The admin panel
+
+`/admin.html`, unlocked with your `ADMIN_TOKEN`. Everything on the public page
+is editable there, and saving takes effect immediately with no redeploy:
+
+- **Profile** — name, handle, location, bio, avatar, footer note
+- **Section titles** — the headings above your products and your links
+- **Main video** — paste a YouTube URL, give it a caption. It shows as a still
+  image and only loads YouTube's player after someone clicks, so it costs
+  nothing on arrival
+- **Social icons** — add, remove, reorder, pick from the icon set
+- **Products** — name, description, button text and destination, badge, how the
+  revenue displays, matching phrases, and a Stripe price id if you want to sell
+  from the page directly
+- **Other links** — your channel, a specific video, anything else
+- **Newsletter** — heading, blurb, button, confirmation message
+
+Saved settings live in Netlify Blobs and override `site.config.json`. The file
+stays the fallback, so **Reset to the file in the repo** always gets you back to
+a known state. If the API is ever unreachable, the page falls back to whatever
+was built at deploy time and still works.
+
+---
+
+## Edit the file instead
+
+You can still edit `site.config.json` directly, commit and push. That sets the
+starting point and the reset target. Note that anything you saved in the admin
+panel takes priority, so press Reset if you want the file to win.
 
 **profile** is your name, location, one line bio, avatar path and the note in
 the footer. Drop your own avatar in `src/assets/` and point `avatar` at it.
@@ -275,8 +344,10 @@ npm test         # 20 tests over the money maths and the sync
 npm run check    # runs the real front end script against the built page
 ```
 
-`npm test` covers 39 cases: the money maths, the matching, the resumable sync,
-rate inversion and fallback, and PayPal normalisation. `npm run check` runs the
+`npm test` covers 55 cases: the money maths, the matching, the resumable sync,
+rate inversion and fallback, PayPal normalisation, config validation and
+storage, the shared renderer's escaping, and the whole assign-a-phrase flow
+from unmatched payment to corrected total. `npm run check` runs the
 real front end script against the real built page in a headless DOM.
 
 `npm run demo` is the fastest way to see what the page looks like with numbers
@@ -296,6 +367,10 @@ product has money against it. Run a sync, then check the matching table.
 not match what Stripe actually stores. Open a real charge, copy its description,
 paste a distinctive piece of it into the product's match rules, push, then press
 Rebuild matching.
+
+**I edited site.config.json but the page did not change.** Admin panel settings
+override the file. Press Reset to the file in the repo, or make the change in
+the panel instead.
 
 **PayPal says permission denied.** Transaction Search is not enabled on that
 REST app yet, or it was enabled recently and has not propagated. Check the tick

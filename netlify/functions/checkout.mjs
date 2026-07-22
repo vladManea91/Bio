@@ -1,6 +1,6 @@
 import { json, readJson } from '../../lib/http.mjs';
 import { createStripe } from '../../lib/stripe-client.mjs';
-import { loadConfig, normalise } from '../../lib/config.mjs';
+import { loadLiveConfig } from '../../lib/config.mjs';
 
 /**
  * Creates a Stripe Checkout session for a product that has a price id set.
@@ -10,7 +10,7 @@ import { loadConfig, normalise } from '../../lib/config.mjs';
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'Use POST.' }, { status: 405 });
 
-  const site = normalise(await loadConfig());
+  const site = await loadLiveConfig();
   const body = await readJson(req);
   const product = (site.products || []).find((p) => p.id === body.product);
 

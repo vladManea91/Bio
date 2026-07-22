@@ -10,6 +10,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { parseHTML } from 'linkedom';
+import { build } from 'esbuild';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,7 +42,16 @@ const check = (name, ok, detail = '') => {
 };
 
 const html = await fs.readFile(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const appJs = await fs.readFile(path.join(ROOT, 'public', 'assets', 'app.js'), 'utf8');
+// app.js is an ES module that imports the shared renderer, so bundle it the
+// way a browser would resolve it before running it in a fake DOM.
+const bundled = await build({
+  entryPoints: [path.join(ROOT, 'public', 'assets', 'app.js')],
+  bundle: true,
+  format: 'iife',
+  write: false,
+  logLevel: 'silent'
+});
+const appJs = bundled.outputFiles[0].text;
 const { window, document } = parseHTML(html);
 
 // Minimal browser surface the script touches.
@@ -56,11 +66,25 @@ window.Intl = Intl;
 window.SITE = JSON.parse(html.match(/window\.SITE = (\{.*?\});/s)[1]);
 
 const fetched = [];
+const LIVE_CONFIG = {
+  revision: 'changed-in-admin',
+  profile: { name: 'Vlad Manea', handle: '@vladmanea', location: 'Germany', tagline: 'Edited in the admin panel.' },
+  sections: { products_title: 'My products', links_title: 'Find me here' },
+  featured_video: { enabled: true, heading: 'Start here', title: 'How I grade a photo', youtube_id: 'dQw4w9WgXcQ' },
+  socials: [{ label: 'Instagram', icon: 'instagram', url: 'https://instagram.com/x' }],
+  links: [
+    { id: 'a', title: 'Channel', url: 'https://youtube.com/@x', kind: 'youtube' },
+    { id: 'b', title: 'Skool', url: 'https://skool.com/x', kind: 'skool' }
+  ],
+  newsletter: { enabled: true, heading: 'The color list', button: 'Join', success: 'Done.' },
+  money: { base_currency: 'usd', window_months: 12, show_total_bar: true },
+  products: JSON.parse(JSON.stringify(window.SITE.products))
+};
+
 window.fetch = async (url) => {
   fetched.push(String(url));
-  if (String(url).includes('/api/revenue')) {
-    return { ok: true, status: 200, json: async () => REVENUE };
-  }
+  if (String(url).includes('/api/revenue')) return { ok: true, status: 200, json: async () => REVENUE };
+  if (String(url).includes('/api/config')) return { ok: true, status: 200, json: async () => LIVE_CONFIG };
   return { ok: true, status: 200, json: async () => ({ ok: true }) };
 };
 
@@ -74,8 +98,12 @@ await new Promise((r) => setTimeout(r, 60));
 
 console.log('\nstatic markup');
 check('4 product cards rendered', document.querySelectorAll('.card').length === 4);
-check('3 plain links rendered', document.querySelectorAll('.link').length === 3);
-check('4 social icons rendered', document.querySelectorAll('.socials a').length === 4);
+check('links re-rendered from the saved settings', document.querySelectorAll('.link').length === 2);
+check('socials re-rendered from the saved settings', document.querySelectorAll('.socials a').length === 1);
+check('section heading follows the saved settings', document.querySelector('#links-title').textContent === 'Find me here');
+check('tagline re-rendered', /Edited in the admin panel/.test(document.querySelector('.head__tagline').textContent));
+check('featured video rendered', Boolean(document.querySelector('[data-video]')));
+check('video does not load youtube until clicked', !document.querySelector('#region-video iframe'));
 check('signup form present', Boolean(document.querySelector('#subscribe')));
 check('no unreplaced tokens', !html.includes('{{'));
 check('honeypot field is hidden', document.querySelector('#company')?.className === 'hp');
@@ -108,7 +136,7 @@ const presets = document.querySelector('[data-product="presets"]');
 check('monthly product says a month or this month', /month/i.test(presets.querySelector('[data-money]').textContent), presets.querySelector('[data-money]').textContent);
 
 console.log('\nbehaviour');
-check('view was tracked', fetched.some((u) => u.includes('/api/track')) || true);
+check('config endpoint was called', fetched.some((u) => u.includes('/api/config')));
 check('revenue endpoint was called', fetched.some((u) => u.includes('/api/revenue')));
 
 // Now prove the page survives with no API at all.
@@ -126,7 +154,7 @@ check('revenue endpoint was called', fetched.some((u) => u.includes('/api/revenu
   vm.runInContext(appJs, c2);
   await new Promise((r) => setTimeout(r, 40));
   console.log('\nno api available');
-  check('page still shows all links', d2.querySelectorAll('.link').length === 3);
+  check('page still shows the links built at deploy time', d2.querySelectorAll('.link').length === 3);
   check('tape stays hidden instead of showing zeros', d2.querySelector('#tape').hasAttribute('hidden'));
   check('no error text leaked into the page', !/undefined|NaN/.test(d2.querySelector('main').textContent));
 }
