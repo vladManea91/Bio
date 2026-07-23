@@ -133,9 +133,15 @@ same match rules, the same cards and the same receipt strip cover both.
 Three things PayPal does that Stripe does not, all handled but worth knowing:
 
 - A payment can take **up to three hours** to appear in the API, so the newest
-  sales lag a little. The hourly sync catches them.
-- History goes back **three years**, not further, whatever you set
-  `history_months` to.
+  sales lag a little. The sync's search window always stays 3 hours behind the
+  current time to avoid PayPal rejecting the request outright, and the hourly
+  cron catches the sale once it becomes searchable.
+- History goes back **three years and no further**, full stop, no matter what
+  `history_months` is set to. That setting only applies to Stripe. PayPal's
+  own sync clamps itself to its real limit automatically, and the admin panel
+  says so when it happens. Asking further back than that is exactly what
+  causes a generic "not well-formed" error on a full resync, since PayPal
+  gives no clearer message for it.
 - If the app already existed before you ticked Transaction Search, the
   permission can take a few hours to take effect. Until then the API answers 403
   and the admin panel will tell you exactly that.

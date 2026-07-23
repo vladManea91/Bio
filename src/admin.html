@@ -202,7 +202,8 @@ function paintAccounts(accounts) {
           const status = a.error
             ? `<span class="warn">${esc(a.error)}</span>`
             : a.complete === false ? '<span class="warn">stopped, run sync again</span>' : '<span class="ok">ok</span>';
-          return `<tr><td>${esc(a.account)}</td><td>${esc(fetched)}</td><td>${status}</td></tr>`;
+          const note = a.note ? `<br><span class="hint" style="margin:0">${esc(a.note)}</span>` : '';
+          return `<tr><td>${esc(a.account)}</td><td>${esc(fetched)}</td><td>${status}${note}</td></tr>`;
         }).join('')}
       </tbody></table>`;
 }
@@ -241,7 +242,7 @@ $('#paypal-check').addEventListener('click', async (e) => {
       out.innerHTML = `<p class="hint warn">${esc(body.error)}</p>`;
       return;
     }
-    out.innerHTML = `<p class="hint">PAYPAL_ENV is set to <b>${esc(body.env)}</b>.</p>` + body.results.map((r) => `
+    out.innerHTML = `<p class="hint">PAYPAL_ENV is <b>${esc(body.env)}</b>. The real sync searches up to ${body.max_history_days} days back, which is PayPal's own limit, not a setting on this page.</p>` + body.results.map((r) => `
       <div class="item">
         <div class="item__bar"><strong>${esc(r.account)}</strong>
           <span class="${r.auth === 'ok' && r.search === 'ok' ? 'ok' : 'warn'}">
@@ -250,7 +251,9 @@ $('#paypal-check').addEventListener('click', async (e) => {
         </div>
         ${r.error ? `<p class="hint warn">${esc(r.error)}</p>` : ''}
         ${r.note ? `<p class="hint warn">${esc(r.note)}</p>` : ''}
-        ${r.search === 'ok' ? `<p class="hint">${r.transactions_last_7_days} transaction(s) found in the last 7 days.</p>` : ''}
+        ${r.search === 'ok' ? `<p class="hint">${r.transactions_last_7_days} transaction(s) in the last 7 days (a quick check, not the sync's real range).</p>` : ''}
+        ${r.deep_history === 'ok' ? `<p class="hint ok">Searching near the ${r.deep_history_days}-day limit works too, so a Full resync should reach your older history.</p>` : ''}
+        ${r.deep_history === 'failed' ? `<p class="hint warn">Searching near the history limit failed: ${esc(r.deep_history_error)}</p>` : ''}
         ${(r.sample || []).length ? `<pre style="margin-top:6px">${esc(JSON.stringify(r.sample, null, 2))}</pre>` : ''}
       </div>`).join('');
   } catch (err) {

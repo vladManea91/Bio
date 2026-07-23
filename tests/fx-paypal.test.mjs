@@ -310,3 +310,61 @@ test('the real sync never asks paypal for the last 3 hours', async () => {
   const latestAllowed = new Date(now - 3 * 3600 * 1000 + 60000); // small slack for chunk boundaries
   assert.ok(new Date(capturedEnd) <= latestAllowed, `end_date ${capturedEnd} should stay at least 3 hours behind now`);
 });
+
+test('earliestSearchable stays a safety margin under 3 real years', async () => {
+  const { earliestSearchable, MAX_HISTORY_DAYS } = await import('../lib/paypal-client.mjs');
+  const now = Date.now();
+  const cutoff = earliestSearchable(now);
+  const threeYearsAgo = Math.floor(now / 1000) - 3 * 365 * 86400;
+  assert.ok(cutoff > threeYearsAgo, 'the clamp is not older than 3 years');
+  assert.ok(MAX_HISTORY_DAYS < 3 * 365, 'a safety margin is kept under the real limit');
+});
+
+test('a 4 year history_months setting does not send paypal a 4 year old start date', async () => {
+  const { runSync } = await import('../lib/sync.mjs');
+  const { earliestSearchable } = await import('../lib/paypal-client.mjs');
+  const now = Date.now();
+  const seenStarts = [];
+
+  const fetchImpl = async (rawUrl) => {
+    const url = new URL(String(rawUrl));
+    if (url.pathname.includes('oauth2/token')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+    if (url.pathname.includes('/v1/reporting/transactions')) {
+      seenStarts.push(url.searchParams.get('start_date'));
+      return { ok: true, status: 200, json: async () => ({ transaction_details: [], total_pages: 1 }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ data: [], has_more: false }) };
+  };
+
+  const result = await runSync({
+    env: { PAYPAL_CLIENT_ID: 'id', PAYPAL_CLIENT_SECRET: 'sec' },
+    fetchImpl,
+    storeName: `test_clamp_${Date.now()}`,
+    now,
+    full: true
+  });
+
+  assert.ok(seenStarts.length > 0, 'at least one request was made');
+  const earliest = earliestSearchable(now);
+  const oldestSeen = seenStarts.map((s) => Math.floor(new Date(s).getTime() / 1000)).sort((a, b) => a - b)[0];
+  assert.ok(oldestSeen >= earliest - 86400, `oldest start_date sent (${seenStarts[0]}) respects PayPal's real limit`);
+
+  const account = result.accounts.find((a) => a.account.startsWith('paypal'));
+  assert.ok(account.note, 'the sync explains that it clamped the range');
+  assert.match(account.note, /does not allow searching further back/);
+});
+
+test('a request that still gets a 400 explains the two real paypal limits', async () => {
+  const { createPayPal } = await import('../lib/paypal-client.mjs');
+  const paypal = createPayPal('id', 'secret', {
+    fetchImpl: async (url) => {
+      if (String(url).includes('oauth2/token')) return { ok: true, status: 200, json: async () => ({ access_token: 'tok', expires_in: 3600 }) };
+      return { ok: false, status: 400, json: async () => ({ message: 'Request is not well-formed, syntactically incorrect, or violates schema.' }) };
+    }
+  });
+  const now = Math.floor(Date.now() / 1000);
+  await assert.rejects(
+    () => paypal.transactions({ since: now - 86400, until: now, deadline: Date.now() + 5000 }),
+    /3 years|last few hours/
+  );
+});
