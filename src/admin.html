@@ -122,6 +122,9 @@
     <h3>Newsletter</h3>
     <div id="ed-newsletter"></div>
 
+    <h3>Ignored payments</h3>
+    <div id="ed-ignore"></div>
+
     <div class="sticky">
       <button class="act primary" id="save-config">Save and publish</button>
       <button class="act" id="reload-config">Discard changes</button>
@@ -266,6 +269,7 @@ $('#paypal-check').addEventListener('click', async (e) => {
 function paintMatched(data) {
   const rows = Object.entries(data.products || {}).map(([id, p]) => ({ name: id, ...p }));
   if (data.other) rows.push({ name: 'Everything else', ...data.other });
+  if (data.ignored && (data.ignored.total || data.ignored.orders)) rows.push({ name: 'Ignored (not counted)', ...data.ignored });
   $('#matched').innerHTML = rows.length
     ? rows.map((r) => `<tr><td>${esc(r.name)}</td><td class="num">${r.orders || 0}</td><td class="num">${money(r.mrr, data.currency)}</td><td class="num">${money(r.total, data.currency)}</td></tr>`).join('')
     : '<tr><td colspan="4">No products configured.</td></tr>';
@@ -297,10 +301,13 @@ $('#load-unmatched').addEventListener('click', async (e) => {
       return;
     }
     const options = data.products.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    const ignoredLine = data.ignored
+      ? ` ${data.ignored} payment(s) worth ${money(data.ignored_total, data.currency)} already set to ignore.`
+      : '';
     out.innerHTML = `
-      <p class="hint">${data.unmatched_payments} of ${data.charges_stored} payments are unassigned, worth ${money(data.unmatched_total, data.currency)}.</p>
+      <p class="hint">${data.unmatched_payments} of ${data.charges_stored} payments are unassigned, worth ${money(data.unmatched_total, data.currency)}.${ignoredLine}</p>
       <table>
-        <thead><tr><th>Text on the payment</th><th class="num">Count</th><th class="num">Total</th><th>Belongs to</th></tr></thead>
+        <thead><tr><th>Text on the payment</th><th class="num">Count</th><th class="num">Total</th><th>Action</th></tr></thead>
         <tbody>
           ${data.groups.map((g, i) => `
             <tr>
@@ -311,6 +318,7 @@ $('#load-unmatched').addEventListener('click', async (e) => {
                 <div class="row" style="flex-wrap:nowrap">
                   <select data-pick="${i}" style="min-width:120px">${options}</select>
                   <button class="act small" data-assign="${i}">Assign</button>
+                  <button class="act small" data-ignore="${i}" title="Not a product sale. Excludes this from every total.">Ignore</button>
                 </div>
               </td>
             </tr>`).join('')}
@@ -340,6 +348,38 @@ $('#load-unmatched').addEventListener('click', async (e) => {
           paintMatched(body.snapshot);
           btn.closest('tr').style.opacity = 0.4;
           btn.textContent = 'Assigned';
+          btn.closest('tr').querySelector('[data-ignore]').disabled = true;
+        } catch (err) {
+          alert(err.message);
+          busy(btn, false);
+        }
+      });
+    });
+
+    out.querySelectorAll('[data-ignore]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const i = Number(btn.dataset.ignore);
+        const group = data.groups[i];
+        if (!confirm(`Ignore "${group.text}"?\n\n${group.count} payment(s) worth ${money(group.total, data.currency)} will stop counting anywhere on the page, including the lifetime total. You can undo this later by removing the rule from Ignored payments in the editor below.`)) return;
+        busy(btn, true, 'Saving...');
+        try {
+          if (!CONFIG) await loadConfig();
+          CONFIG.ignore = CONFIG.ignore || { description_contains: [] };
+          const phrases = new Set(CONFIG.ignore.description_contains || []);
+          phrases.add(group.text.toLowerCase().trim());
+          CONFIG.ignore.description_contains = [...phrases];
+          for (const id of group.stripe_products || []) {
+            const list = new Set(CONFIG.ignore.stripe_product || []);
+            list.add(id);
+            CONFIG.ignore.stripe_product = [...list];
+          }
+          const body = await call('/api/config', { method: 'POST', body: JSON.stringify(CONFIG) });
+          CONFIG = body.config;
+          paintMatched(body.snapshot);
+          btn.closest('tr').style.opacity = 0.4;
+          btn.textContent = 'Ignored';
+          btn.closest('tr').querySelector('[data-assign]').disabled = true;
+          if (typeof paintEditor === 'function' && $('#editor') && !$('#editor').hidden) paintEditor();
         } catch (err) {
           alert(err.message);
           busy(btn, false);
@@ -466,6 +506,11 @@ function paintEditor() {
     </div>
     ${field('newsletter.blurb', 'Blurb', c.newsletter?.blurb || '', 'textarea')}
     ${field('newsletter.success', 'Message after signing up', c.newsletter?.success || '')}`;
+
+  $('#ed-ignore').innerHTML = `
+    <p class="hint">Payments matching any of these never count anywhere on the page, not even in the lifetime total. Delete a phrase here to bring those payments back into "Everything else".</p>
+    ${field('ignore.description_contains', 'Text to ignore, comma separated', (c.ignore?.description_contains || []).join(', '), 'textarea')}
+    ${field('ignore.stripe_product', 'Stripe product ids to ignore, comma separated', (c.ignore?.stripe_product || []).join(', '))}`;
 }
 
 /** Writes a dotted path into the config object, making objects as needed. */

@@ -135,3 +135,37 @@ test('a mixed currency month adds up in the base currency', () => {
   const out = aggregate({ charges, config, now: NOW });
   assert.equal(out.products.manual.total, 94.08);
 });
+
+test('a charge matching an ignore rule counts nowhere at all', () => {
+  const cfg = { ...config, ignore: { description_contains: ['test charge'] } };
+  const c = charge({ description: 'test charge, please disregard', amount: 5000 });
+  const out = aggregate({ charges: [c], config: cfg, now: NOW });
+  assert.equal(out.totals.total, 0, 'it never reaches the lifetime total');
+  assert.equal(out.other.total, 0, 'it does not fall into everything else either');
+  assert.equal(out.ignored.total, 50, 'it shows up in its own ignored bucket instead');
+  assert.equal(out.ignored.orders, 1);
+});
+
+test('an ignore rule wins even when the charge also matches a product', () => {
+  const cfg = { ...config, ignore: { description_contains: ['color grading manual'] } };
+  const c = charge({ description: 'color grading manual - internal test', amount: 4900 });
+  const out = aggregate({ charges: [c], config: cfg, now: NOW });
+  assert.equal(out.products.manual.total, 0, 'the product never sees it');
+  assert.equal(out.ignored.total, 49);
+});
+
+test('no ignore rules configured means nothing is ever ignored', () => {
+  const c = charge({ description: 'color grading manual', amount: 4900 });
+  const out = aggregate({ charges: [c], config, now: NOW }); // config has no `ignore` key at all
+  assert.equal(out.products.manual.total, 49);
+  assert.equal(out.ignored.total, 0);
+});
+
+test('ignore rules can also target a stripe product id', () => {
+  const cfg = { ...config, ignore: { stripe_product: ['prod_test'] } };
+  const c = charge({ id: 'ch_ig', description: 'anything' });
+  const invoices = [{ id: 'in_1', charge: 'ch_ig', lines: { data: [{ price: { id: 'p1', product: 'prod_test' } }] } }];
+  const out = aggregate({ charges: [c], invoices, config: cfg, now: NOW });
+  assert.equal(out.totals.total, 0);
+  assert.equal(out.ignored.total, 10);
+});

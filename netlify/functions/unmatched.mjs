@@ -19,10 +19,23 @@ export default async (req) => {
 
   const groups = new Map();
   let matchedCount = 0;
+  let ignoredCount = 0;
+  let ignoredTotal = 0;
+
+  const ignoreRules = site.ignore || {};
+  const hasIgnoreRules = Object.values(ignoreRules).some((v) => (Array.isArray(v) ? v.length > 0 : Object.keys(v || {}).length > 0));
+  const ignoreCheck = hasIgnoreRules ? [{ id: '__ignored__', match: ignoreRules }] : null;
 
   for (const charge of charges) {
     if (charge.status !== 'succeeded') continue;
     const hint = hints.get(charge.id);
+
+    if (ignoreCheck && matchProduct(charge, hint, ignoreCheck)) {
+      ignoredCount += 1;
+      ignoredTotal += convert((charge.amount || 0) - (charge.amount_refunded || 0), charge.currency, money);
+      continue;
+    }
+
     if (matchProduct(charge, hint, site.products || [])) {
       matchedCount += 1;
       continue;
@@ -79,7 +92,9 @@ export default async (req) => {
     currency: (money.base_currency || 'usd').toLowerCase(),
     charges_stored: charges.length,
     matched: matchedCount,
-    unmatched_payments: charges.length - matchedCount,
+    ignored: ignoredCount,
+    ignored_total: Math.round(ignoredTotal * 100) / 100,
+    unmatched_payments: charges.length - matchedCount - ignoredCount,
     unmatched_total: Math.round(unmatched.reduce((a, g) => a + g.total, 0) * 100) / 100,
     groups: unmatched,
     products: (site.products || []).map((p) => ({ id: p.id, name: p.name }))

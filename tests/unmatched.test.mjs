@@ -98,3 +98,38 @@ test('saving a broken config is refused with a reason', async () => {
   const body = await res.json();
   assert.ok(body.problems.length >= 2);
 });
+
+test('ignored payments are excluded from the unmatched groups and counted separately', async () => {
+  await seed();
+  const store = await openStore('receipts');
+  const config = await loadLiveConfig({ store, force: true });
+  config.ignore = { description_contains: ['some other thing'] };
+  await saveConfig(config, { store });
+
+  const handler = (await import('../netlify/functions/unmatched.mjs')).default;
+  const body = await (await handler(request('/api/unmatched'))).json();
+
+  assert.equal(body.ignored, 1, 'the one charge matching the ignore rule is counted as ignored');
+  assert.equal(body.ignored_total, 9);
+  assert.equal(body.unmatched_payments, 2, 'the remaining two are still unmatched, not ignored');
+  assert.ok(!body.groups.some((g) => g.text.toLowerCase().includes('some other thing')), 'the ignored group never appears in the list to assign');
+
+  await store.delete('config');
+});
+
+test('an ignored payment never counts toward the lifetime total', async () => {
+  await seed();
+  const store = await openStore('receipts');
+  const config = await loadLiveConfig({ store, force: true });
+  config.ignore = { description_contains: ['vladmanea.de order'] };
+  await saveConfig(config, { store });
+
+  const { rebuild } = await import('../lib/sync.mjs');
+  const snapshot = await rebuild({ store, now: NOW });
+
+  assert.equal(snapshot.totals.total, 9, 'only the untouched charge remains in the total');
+  assert.equal(snapshot.ignored.total, 98, 'the two matching charges landed in ignored instead');
+  assert.equal(snapshot.other.total, 9);
+
+  await store.delete('config');
+});
